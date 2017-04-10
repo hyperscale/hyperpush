@@ -1,0 +1,28 @@
+hash: 3b58b62206cd640bc126cbf86b1950b3c044a5b9b56c077fd9cf9d5b8b487dcc
+updated: 2017-04-10T13:23:57.045875352+02:00
+imports:
+- name: github.com/gorilla/websocket
+  version: 3ab3a8b8831546bd18fd182c20687ca853b2bb13
+- name: github.com/julienschmidt/httprouter
+  version: 8c199fb6259ffc1af525cc3ad52ee60ba8359669
+- name: github.com/prometheus/client_golang
+  version: c5b7fccd204277076155f10851dad72b76a49317
+  subpackages:
+  - prometheus
+- name: github.com/rs/cors
+  version: a62a804a8a009876ca59105f7899938a1349f4b3
+- name: github.com/rs/xhandler
+  version: ed27b6fd65218132ee50cd95f38474a3d8a2cd12
+- name: github.com/rs/xid
+  version: e39c3571542a72a9d44559fc96e2a80ed896682b
+- name: github.com/rs/xlog
+  version: ee33a676e5f4bbda5b80dace72043f7e3b61ebda
+  subpackages:
+  - internal/term
+- name: github.com/satori/go.uuid
+  version: 879c5887cd475cd7864858769793b2ceb0d44feb
+- name: golang.org/x/net
+  version: 236b8f043b920452504e263bc21d354427127473
+  subpackages:
+  - context
+testImports: []
