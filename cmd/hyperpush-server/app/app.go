@@ -11,8 +11,8 @@ import (
 
 	"github.com/euskadi31/go-server"
 	"github.com/euskadi31/go-service"
-	"github.com/rs/zerolog/log"
 	"github.com/hyperscale/hyperpush/cmd/hyperpush-server/app/container"
+	"github.com/rs/zerolog/log"
 )
 
 // Run push server
@@ -20,7 +20,7 @@ func Run() error {
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
 
-	_ = service.Get(services.LoggerKey)
+	_ = service.Get(container.LoggerKey)
 	router := service.Get(container.RouterKey).(*server.Server)
 
 	log.Info().Msg("Rinning")

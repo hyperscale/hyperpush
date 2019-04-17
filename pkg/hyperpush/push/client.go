@@ -10,11 +10,11 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	ws "github.com/gorilla/websocket"
-	"github.com/rs/zerolog/log"
 	"github.com/hyperscale/hyperpush/pkg/hyperpush/message"
 	"github.com/hyperscale/hyperpush/pkg/hyperpush/websocket"
-	"github.com/google/uuid"
+	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -183,7 +183,12 @@ func (c *Client) Listen() {
 
 		event, err := message.Decode(msg)
 		if err != nil {
-			log.Error().Err(err).Msg("message.Decode")
+			log.Error().Err(err).Msg("Bad request")
+
+			c.Write(&message.Event{
+				Type: message.EventTypeError,
+				Data: json.RawMessage("Bad request"),
+			})
 		} else {
 			c.process(event)
 		}

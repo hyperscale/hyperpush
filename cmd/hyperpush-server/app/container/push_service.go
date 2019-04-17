@@ -5,18 +5,11 @@
 package container
 
 import (
-	"fmt"
-	"net/http"
-
-	"github.com/euskadi31/go-server"
-	"github.com/euskadi31/go-server/response"
+	"github.com/euskadi31/go-eventemitter"
 	"github.com/euskadi31/go-service"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/hlog"
-
+	"github.com/hyperscale/hyperpush/cmd/hyperpush-server/app/config"
 	"github.com/hyperscale/hyperpush/pkg/hyperpush/push"
 )
-
 
 // Services keys
 const (
@@ -26,7 +19,8 @@ const (
 func init() {
 	service.Set(PushServerKey, func(c service.Container) interface{} {
 		cfg := c.Get(ConfigKey).(*config.Configuration)
+		emitter := c.Get(EventEmitterKey).(eventemitter.EventEmitter)
 
-		return push.NewServer(cfg.Push)
+		return push.NewServer(cfg.Push, emitter)
 	})
 }

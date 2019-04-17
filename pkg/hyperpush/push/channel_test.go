@@ -10,61 +10,40 @@ import (
 	"sync"
 	"testing"
 
-	ws "github.com/gorilla/websocket"
+	"github.com/stretchr/testify/mock"
+
 	"github.com/hyperscale/hyperpush/pkg/hyperpush/message"
+	"github.com/hyperscale/hyperpush/pkg/hyperpush/websocket"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestChannel(t *testing.T) {
-	server := &ServerMock{}
+	serverMock := &MockServer{}
 
 	var wgj sync.WaitGroup
 	var wgm sync.WaitGroup
+	var wgl sync.WaitGroup
 
 	wgj.Add(1)
 	wgm.Add(1)
+	wgl.Add(1)
 
-	conn := &WebSocketConnection{
-		writeMessageAssertType: "join",
-		joinAssertFunc: func(messageType int, data []byte) error {
-			defer wgj.Done()
-			assert.Equal(t, ws.TextMessage, messageType)
+	connMock := &websocket.MockConnection{}
 
-			event, err := message.Decode(data)
-			assert.NoError(t, err)
+	connMock.On("SetWriteDeadline", mock.Anything).Return(nil)
+	connMock.On("WriteMessage", 1, []byte(`{"type":"subscribed","channel":"test"}`)).Return(nil).Run(func(fn mock.Arguments) {
+		defer wgj.Done()
+	})
 
-			assert.Equal(t, message.EventTypeSubscribed, event.Type)
-			assert.Equal(t, "test", event.Channel)
+	connMock.On("WriteMessage", 1, []byte(`{"type":"message","channel":"test","name":"foo","data":"bar"}`)).Return(nil).Run(func(fn mock.Arguments) {
+		defer wgm.Done()
+	})
 
-			return nil
-		},
-		leaveAssertFunc: func(messageType int, data []byte) error {
-			assert.Equal(t, ws.TextMessage, messageType)
+	connMock.On("WriteMessage", 1, []byte(`{"type":"unsubscribed","channel":"test"}`)).Return(nil).Run(func(fn mock.Arguments) {
+		defer wgl.Done()
+	})
 
-			event, err := message.Decode(data)
-			assert.NoError(t, err)
-
-			assert.Equal(t, message.EventTypeUnsubscribed, event.Type)
-			assert.Equal(t, "test", event.Channel)
-
-			return nil
-		},
-		writeAssertFunc: func(messageType int, data []byte) error {
-			defer wgm.Done()
-			assert.Equal(t, ws.TextMessage, messageType)
-
-			event, err := message.Decode(data)
-			assert.NoError(t, err)
-
-			assert.Equal(t, message.EventTypeMessage, event.Type)
-			assert.Equal(t, "test", event.Channel)
-			assert.Equal(t, json.RawMessage(`"bar"`), event.Data)
-
-			return nil
-		},
-	}
-
-	client := NewClient(context.Background(), conn, server)
+	client := NewClient(context.Background(), connMock, serverMock)
 	go client.processMessages()
 
 	c := NewChannel("test")
@@ -77,8 +56,6 @@ func TestChannel(t *testing.T) {
 
 	assert.Equal(t, 1, c.clients.Size())
 
-	conn.writeMessageAssertType = "write"
-
 	c.Publish(&message.Event{
 		Type:    message.EventTypeMessage,
 		Channel: "test",
@@ -88,10 +65,10 @@ func TestChannel(t *testing.T) {
 
 	wgm.Wait()
 
-	conn.writeMessageAssertType = "leave"
+	c.Leave(client)
+	c.Leave(client)
 
-	c.Leave(client)
-	c.Leave(client)
+	wgl.Wait()
 
 	assert.Equal(t, 0, c.Size())
 }

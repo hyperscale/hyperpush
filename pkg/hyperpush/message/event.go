@@ -32,7 +32,7 @@ const (
 type Event struct {
 	Type    EventType       `json:"type"`
 	Channel string          `json:"channel,omitempty"`
-	User    int             `json:"user,omitempty"`
+	User    string          `json:"user,omitempty"`
 	Name    string          `json:"name,omitempty"`
 	Data    json.RawMessage `json:"data,omitempty"`
 	Token   string          `json:"token,omitempty"`
@@ -46,7 +46,7 @@ func (e *Event) UnmarshalJSON(data []byte) error {
 	d := struct {
 		Type    EventType       `json:"type"`
 		Channel string          `json:"channel,omitempty"`
-		User    int             `json:"user,omitempty"`
+		User    string          `json:"user,omitempty"`
 		Name    string          `json:"name,omitempty"`
 		Data    json.RawMessage `json:"data,omitempty"`
 		Token   string          `json:"token,omitempty"`

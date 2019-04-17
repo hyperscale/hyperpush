@@ -9,6 +9,7 @@ import (
 )
 
 // Connection interface
+//go:generate mockery -case=underscore -inpkg -name=Connection
 type Connection interface {
 	SetReadLimit(limit int64)
 	ReadMessage() (messageType int, p []byte, err error)

@@ -9,6 +9,7 @@ import (
 )
 
 // Provider interface
+//go:generate mockery -case=underscore -inpkg -name=Provider
 type Provider interface {
 	Authenticate(accessToken string) (*User, message.ErrorInterface)
 }

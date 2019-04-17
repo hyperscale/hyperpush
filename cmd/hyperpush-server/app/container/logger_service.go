@@ -9,10 +9,10 @@ import (
 	"os"
 
 	"github.com/euskadi31/go-service"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"github.com/hyperscale/hyperpush/cmd/hyperpush-server/app/config"
 	"github.com/hyperscale/hyperpush/pkg/hyperpush/version"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 // Services keys
@@ -31,7 +31,7 @@ func init() {
 		logger := zerolog.New(os.Stdout).With().
 			Timestamp().
 			Str("role", cfg.Logger.Prefix).
-			Str("version", version.Version.String()).
+			Str("version", version.Get().Version).
 			Str("env", cfg.Environment.String()).
 			Caller().
 			Logger()

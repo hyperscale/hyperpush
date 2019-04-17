@@ -13,31 +13,30 @@ import (
 
 	ws "github.com/gorilla/websocket"
 	"github.com/hyperscale/hyperpush/pkg/hyperpush/message"
-	"github.com/stretchr/testify/assert"
+	"github.com/hyperscale/hyperpush/pkg/hyperpush/websocket"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestClientWrtie(t *testing.T) {
-	server := &ServerMock{}
+	var wgm sync.WaitGroup
 
-	conn := &WebSocketConnection{
-		writeMessageAssertType: "write",
-		writeAssertFunc: func(messageType int, data []byte) error {
+	serverMock := &MockServer{}
 
-			assert.Equal(t, ws.TextMessage, messageType)
+	serverMock.On("Leave", mock.AnythingOfType("*push.Client"))
 
-			event, err := message.Decode(data)
-			assert.NoError(t, err)
+	connMock := &websocket.MockConnection{}
 
-			assert.Equal(t, message.EventTypeMessage, event.Type)
-			assert.Equal(t, "test", event.Channel)
-			assert.Equal(t, "foo", event.Name)
-			assert.Equal(t, json.RawMessage(`"bar"`), event.Data)
+	wgm.Add(1)
 
-			return nil
-		},
-	}
+	connMock.On("SetWriteDeadline", mock.Anything).Return(nil)
 
-	client := NewClient(context.Background(), conn, server)
+	connMock.On("WriteMessage", 1, []byte(`{"type":"message","channel":"test","name":"foo","data":"bar"}`)).Return(nil).Run(func(fn mock.Arguments) {
+		defer wgm.Done()
+	})
+
+	connMock.On("Close").Return(nil)
+
+	client := NewClient(context.Background(), connMock, serverMock)
 
 	go client.processMessages()
 
@@ -48,27 +47,19 @@ func TestClientWrtie(t *testing.T) {
 		Data:    json.RawMessage(`"bar"`),
 	})
 
+	wgm.Wait()
+
 	client.Close()
+
+	connMock.AssertExpectations(t)
+
+	serverMock.AssertExpectations(t)
 }
 
 func TestClientWriteFail(t *testing.T) {
-	conn := &WebSocketConnection{
-		writeMessageAssertType: "write",
-		writeAssertFunc: func(messageType int, data []byte) error {
-			assert.Equal(t, ws.TextMessage, messageType)
+	connMock := &websocket.MockConnection{}
 
-			event, err := message.Decode(data)
-			assert.NoError(t, err)
-
-			assert.Equal(t, message.EventTypeMessage, event.Type)
-			assert.Equal(t, "test", event.Channel)
-			assert.Equal(t, json.RawMessage(`"bar"`), event.Data)
-
-			return errors.New("test error")
-		},
-	}
-
-	client := NewClient(context.Background(), conn, nil)
+	client := NewClient(context.Background(), connMock, nil)
 
 	client.Write(&message.Event{
 		Type:    message.EventTypeMessage,
@@ -76,122 +67,81 @@ func TestClientWriteFail(t *testing.T) {
 		Name:    "foo",
 		Data:    json.RawMessage(`"bar"`),
 	})
+
+	connMock.AssertExpectations(t)
 }
 
 func TestClientPing(t *testing.T) {
-	server := &ServerMock{}
+	var wgw sync.WaitGroup
 
-	readCount := 0
+	serverMock := &MockServer{}
 
-	conn := &WebSocketConnection{
-		writeMessageAssertType: "write",
-		writeAssertFunc: func(messageType int, data []byte) error {
-			assert.Equal(t, ws.TextMessage, messageType)
+	serverMock.On("Leave", mock.AnythingOfType("*push.Client"))
 
-			event, err := message.Decode(data)
-			assert.NoError(t, err)
+	connMock := &websocket.MockConnection{}
 
-			assert.Equal(t, "pong", event.Type)
+	connMock.On("SetWriteDeadline", mock.Anything).Return(nil)
+	connMock.On("SetReadLimit", mock.Anything).Return(nil)
 
-			return nil
-		},
-		readMessageAssertType: "ping",
-		readMessageAssertFunc: func() (messageType int, p []byte, err error) {
-			if readCount == 1 {
-				return 1, []byte(""), &ws.CloseError{Code: ws.CloseUnsupportedData}
-			}
+	connMock.On("ReadMessage").Return(1, []byte(`{"type":"ping"}`), nil).Once()
 
-			readCount++
+	wgw.Add(1)
 
-			return 1, []byte(`{"type":"ping"}`), nil
-		},
-	}
+	connMock.On("WriteMessage", 1, []byte(`{"type":"pong"}`)).Return(nil).Run(func(args mock.Arguments) {
+		defer wgw.Done()
+	})
 
-	client := NewClient(context.Background(), conn, server)
+	connMock.On("ReadMessage").Return(1, []byte(""), &ws.CloseError{Code: ws.CloseUnsupportedData}).Once()
+
+	connMock.On("Close").Return(nil)
+
+	client := NewClient(context.Background(), connMock, serverMock)
 
 	client.Listen()
 
+	wgw.Wait()
+
 	client.Close()
+
+	connMock.AssertExpectations(t)
+	serverMock.AssertExpectations(t)
 }
 
 func TestClientSubscribe(t *testing.T) {
-	readCount := 0
+	serverMock := &MockServer{}
 
-	server := &ServerMock{}
+	serverMock.On("Leave", mock.AnythingOfType("*push.Client"))
 
-	conn := &WebSocketConnection{
-		writeMessageAssertType: "write",
-		writeAssertFunc: func(messageType int, data []byte) error {
-			assert.Equal(t, ws.TextMessage, messageType)
+	serverMock.On("JoinChannel", "test", mock.AnythingOfType("*push.Client"))
 
-			event, err := message.Decode(data)
-			assert.NoError(t, err)
+	connMock := &websocket.MockConnection{}
 
-			switch readCount {
-			case 1:
-				assert.Equal(t, "subscribed", event.Type)
-				assert.Equal(t, "test", event.Channel)
-			case 2:
-				assert.Equal(t, "unsubscribed", event.Type)
-				assert.Equal(t, "test", event.Channel)
-			}
+	//connMock.On("SetWriteDeadline", mock.Anything).Return(nil)
+	connMock.On("SetReadLimit", mock.Anything).Return(nil)
 
-			return nil
-		},
-		readMessageAssertFunc: func() (messageType int, p []byte, err error) {
-			defer func() {
-				readCount++
-			}()
+	connMock.On("ReadMessage").Return(1, []byte(`{"type":"subscribe","channel":"test"}`), nil).Once()
 
-			switch readCount {
-			case 0:
-				return 1, []byte(`{"type":"subscribe","channel":"test"}`), nil
-			case 1:
-				return 1, []byte(`{"type":"unsubscribe","channel":"test"}`), nil
-			default:
-				return 1, []byte(""), &ws.CloseError{Code: ws.CloseUnsupportedData}
-			}
-		},
-	}
+	connMock.On("ReadMessage").Return(1, []byte(""), &ws.CloseError{Code: ws.CloseUnsupportedData}).Once()
 
-	client := NewClient(context.Background(), conn, server)
+	connMock.On("Close").Return(nil)
+
+	client := NewClient(context.Background(), connMock, serverMock)
 
 	client.Listen()
 
 	client.Close()
+
+	connMock.AssertExpectations(t)
+	serverMock.AssertExpectations(t)
 }
 
+/*
 func TestClientMessageWithoutAuthenticate(t *testing.T) {
-	server := &ServerMock{}
+	serverMock := &MockServer{}
 
-	readCount := 0
+	connMock := &websocket.MockConnection{}
 
-	conn := &WebSocketConnection{
-		writeMessageAssertType: "write",
-		writeAssertFunc: func(messageType int, data []byte) error {
-			assert.Equal(t, ws.TextMessage, messageType)
-
-			event, err := message.Decode(data)
-			assert.NoError(t, err)
-
-			assert.Equal(t, "error", event.Type)
-			assert.Equal(t, int(message.ErrorCodeUnauthorized), event.Code)
-			assert.Equal(t, "Unauthorized", event.Message)
-
-			return nil
-		},
-		readMessageAssertFunc: func() (messageType int, p []byte, err error) {
-			if readCount == 1 {
-				return 1, []byte(""), &ws.CloseError{Code: ws.CloseUnsupportedData}
-			}
-
-			readCount++
-
-			return 1, []byte(`{"type":"message","channel":"test","name":"foo","data":"bar"}`), nil
-		},
-	}
-
-	client := NewClient(context.Background(), conn, server)
+	client := NewClient(context.Background(), connMock, serverMock)
 
 	assert.False(t, client.IsAuthenticated())
 
@@ -199,65 +149,99 @@ func TestClientMessageWithoutAuthenticate(t *testing.T) {
 
 	client.Close()
 }
-
+*/
 func TestClientBadEventType(t *testing.T) {
-	readCount := 0
+	var wgw sync.WaitGroup
 
-	server := &ServerMock{}
+	serverMock := &MockServer{}
 
-	conn := &WebSocketConnection{
-		writeMessageAssertType: "write",
-		writeAssertFunc: func(messageType int, data []byte) error {
-			if messageType == ws.CloseMessage {
-				return nil
-			}
+	serverMock.On("Leave", mock.AnythingOfType("*push.Client")).Once()
 
-			assert.Equal(t, ws.TextMessage, messageType)
+	connMock := &websocket.MockConnection{}
 
-			event, err := message.Decode(data)
-			assert.NoError(t, err)
+	connMock.On("SetWriteDeadline", mock.Anything).Return(nil).Once()
 
-			assert.Equal(t, "error", event.Type)
-			assert.Equal(t, json.RawMessage(`"Unsupported \"bad\" event type"`), event.Data)
+	connMock.On("SetReadLimit", mock.Anything).Return(nil)
 
-			return nil
-		},
-		readMessageAssertType: "bad",
-		readMessageAssertFunc: func() (messageType int, p []byte, err error) {
-			if readCount == 1 {
-				return 1, []byte(""), &ws.CloseError{Code: ws.CloseUnsupportedData}
-			}
+	wgw.Add(1)
 
-			readCount++
+	connMock.On("WriteMessage", 1, []byte(`{"type":"error","data":"Unsupported \"bad\" event type"}`)).Return(nil).Run(func(args mock.Arguments) {
+		defer wgw.Done()
+	}).Once()
 
-			return 1, []byte(`{"type":"bad","channel":"test"}`), nil
-		},
-	}
+	connMock.On("ReadMessage").Return(1, []byte(`{"type":"bad","channel":"test"}`), nil).Once()
 
-	client := NewClient(context.Background(), conn, server)
+	connMock.On("ReadMessage").Return(1, []byte(""), &ws.CloseError{Code: ws.CloseUnsupportedData}).Once()
+
+	connMock.On("Close").Return(nil).Once()
+
+	client := NewClient(context.Background(), connMock, serverMock)
 
 	client.Listen()
 
+	wgw.Wait()
+
 	client.Close()
+
+	connMock.AssertExpectations(t)
+	serverMock.AssertExpectations(t)
 }
+
+//@TODO: Bug
+/*
+func TestClientBadMessageFormat(t *testing.T) {
+	var wgw sync.WaitGroup
+
+	serverMock := &MockServer{}
+
+	serverMock.On("Leave", mock.AnythingOfType("*push.Client")).Once()
+
+	connMock := &websocket.MockConnection{}
+
+	connMock.On("SetWriteDeadline", mock.Anything).Return(nil).Once()
+
+	connMock.On("SetReadLimit", mock.Anything).Return(nil)
+
+	wgw.Add(1)
+
+	connMock.On("WriteMessage", 1, []byte(`{"type":"error","data":"Bad request"}`)).Return(nil).Run(func(args mock.Arguments) {
+		defer wgw.Done()
+	}).Once()
+
+	connMock.On("ReadMessage").Return(1, []byte(`{"type":"bad","channel":"test"`), nil).Once()
+
+	connMock.On("ReadMessage").Return(1, []byte(""), &ws.CloseError{Code: ws.CloseUnsupportedData}).Once().WaitUntil(time.After(1 * time.Second))
+
+	connMock.On("Close").Return(nil).Once()
+
+	client := NewClient(context.Background(), connMock, serverMock)
+
+	client.Listen()
+
+	wgw.Wait()
+
+	client.Close()
+
+	connMock.AssertExpectations(t)
+	serverMock.AssertExpectations(t)
+}
+*/
 
 func TestProcessMessageWriteFail(t *testing.T) {
 	var wg sync.WaitGroup
 
+	serverMock := &MockServer{}
+
+	connMock := &websocket.MockConnection{}
+
+	connMock.On("SetWriteDeadline", mock.Anything).Return(nil)
+
 	wg.Add(1)
+	connMock.On("WriteMessage", 1, []byte(`{"type":"message","channel":"test","name":"foo","data":"bar"}`)).Return(errors.New("fail")).Run(func(args mock.Arguments) {
+		defer wg.Done()
+	})
 
-	server := &ServerMock{}
-
-	conn := &WebSocketConnection{
-		writeMessageAssertType: "write",
-		writeAssertFunc: func(messageType int, data []byte) error {
-			defer wg.Done()
-
-			return errors.New("test")
-		},
-	}
-
-	client := NewClient(context.Background(), conn, server)
+	client := NewClient(context.Background(), connMock, serverMock)
 
 	go client.processMessages()
 
@@ -269,6 +253,9 @@ func TestProcessMessageWriteFail(t *testing.T) {
 	})
 
 	wg.Wait()
+
+	connMock.AssertExpectations(t)
+	serverMock.AssertExpectations(t)
 }
 
 func TestProcessMessageClosedChannel(t *testing.T) {
@@ -276,24 +263,24 @@ func TestProcessMessageClosedChannel(t *testing.T) {
 
 	wg.Add(1)
 
-	server := &ServerMock{}
+	serverMock := &MockServer{}
 
-	conn := &WebSocketConnection{
-		writeMessageAssertType: "write",
-		writeAssertFunc: func(messageType int, data []byte) error {
-			defer wg.Done()
+	connMock := &websocket.MockConnection{}
 
-			assert.Equal(t, ws.CloseMessage, messageType)
+	connMock.On("SetWriteDeadline", mock.Anything).Return(nil)
 
-			return nil
-		},
-	}
+	connMock.On("WriteMessage", 8, []byte("")).Return(nil).Run(func(args mock.Arguments) {
+		defer wg.Done()
+	})
 
-	client := NewClient(context.Background(), conn, server)
+	client := NewClient(context.Background(), connMock, serverMock)
 
 	go client.processMessages()
 
 	close(client.messagesCh)
 
 	wg.Wait()
+
+	connMock.AssertExpectations(t)
+	serverMock.AssertExpectations(t)
 }

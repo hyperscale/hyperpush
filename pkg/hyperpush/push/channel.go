@@ -9,6 +9,7 @@ import (
 
 	"github.com/hyperscale/hyperpush/pkg/hyperpush/message"
 	"github.com/hyperscale/hyperpush/pkg/hyperpush/metrics"
+	"github.com/rs/zerolog/log"
 )
 
 // Prefix channel
@@ -38,7 +39,7 @@ func NewChannel(ID string) *Channel {
 // Join client to channel
 func (c *Channel) Join(client *Client) {
 	if c.clients.Has(client.ID) {
-		log.DebugfC(client.Ctx, "Client %s already joined the %s channel", client.ID, c.ID)
+		log.Debug().Msgf("Client %s already joined the %s channel", client.ID, c.ID)
 
 		return
 	}
@@ -54,14 +55,14 @@ func (c *Channel) Join(client *Client) {
 		"channel": c.ID,
 	}).Set(float64(c.clients.Size()))
 
-	log.DebugfC(client.Ctx, "Client %s join %s channel.", client.ID, c.ID)
-	log.DebugfC(client.Ctx, "Now %d clients in the %s channel.", c.clients.Size(), c.ID)
+	log.Debug().Msgf("Client %s join %s channel.", client.ID, c.ID)
+	log.Debug().Msgf("Now %d clients in the %s channel.", c.clients.Size(), c.ID)
 }
 
 // Leave client to channel
 func (c *Channel) Leave(client *Client) {
 	if c.clients.Has(client.ID) == false {
-		log.DebugfC(client.Ctx, "Client %s has not joined the %s channel", client.ID, c.ID)
+		log.Debug().Msgf("Client %s has not joined the %s channel", client.ID, c.ID)
 
 		return
 	}
@@ -77,8 +78,8 @@ func (c *Channel) Leave(client *Client) {
 		"channel": c.ID,
 	}).Set(float64(c.clients.Size()))
 
-	log.DebugfC(client.Ctx, "Client %s leave %s channel.", client.ID, c.ID)
-	log.DebugfC(client.Ctx, "Now %d clients in the %s channel.", c.clients.Size(), c.ID)
+	log.Debug().Msgf("Client %s leave %s channel.", client.ID, c.ID)
+	log.Debug().Msgf("Now %d clients in the %s channel.", c.clients.Size(), c.ID)
 }
 
 // Publish to channel

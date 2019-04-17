@@ -44,6 +44,7 @@ func NewEventFromErrorCode(code ErrorCode) *Event {
 }
 
 // ErrorInterface for error
+//go:generate mockery -case=underscore -inpkg -name=ErrorInterface
 type ErrorInterface interface {
 	error
 	Code() ErrorCode

@@ -55,6 +55,8 @@ coverage: $(BUILD_DIR)/coverage.out
 coverage-html: $(BUILD_DIR)/coverage.out
 	@go tool cover -html ./$(BUILD_DIR)/coverage.out
 
+generate: $(GO_FILES)
+	@go generate ./...
 
 ${BUILD_DIR}/hyperpush-server: $(GO_FILES)
 	@echo "Building $@..."
@@ -65,6 +67,8 @@ ${BUILD_DIR}/hyperpush-server: $(GO_FILES)
 run-hyperpush-server: ${BUILD_DIR}/hyperpush-server
 	@echo "Running $<..."
 	@./$<
+
+run: run-hyperpush-server
 
 .PHONY: build
 build: ${BUILD_DIR}/hyperpush-server plugin

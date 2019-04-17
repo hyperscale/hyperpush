@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/euskadi31/go-eventemitter"
 	"github.com/gorilla/websocket"
 	"github.com/hyperscale/hyperpush/pkg/hyperpush/authentication"
 	"github.com/hyperscale/hyperpush/pkg/hyperpush/message"
@@ -19,6 +20,7 @@ import (
 type ErrorHandler func(w http.ResponseWriter, code int, err error)
 
 // Server interface
+//go:generate mockery -case=underscore -inpkg -name=Server
 type Server interface {
 	Authenticate(token string, client *Client)
 	SetAuthenticationProvider(provider authentication.Provider)
@@ -36,16 +38,17 @@ type server struct {
 	ErrorHandler        ErrorHandler
 	clients             *ClientPool
 	clientsEventCh      chan *ClientEvent
-	users               *UserPool
+	users               UserPool
 	channels            *ChannelPool
 	channelsEventCh     chan *ChannelEvent
 	authentication      authentication.Provider
 	authenticateEventCh chan *AuthenticationEvent
 	messagesCh          chan *message.Event
+	emitter             eventemitter.EventEmitter
 }
 
 // NewServer server
-func NewServer(config *Configuration) Server {
+func NewServer(config *Configuration, emitter eventemitter.EventEmitter) Server {
 	return &server{
 		config: config,
 		upgrader: websocket.Upgrader{
@@ -67,6 +70,7 @@ func NewServer(config *Configuration) Server {
 		channelsEventCh:     make(chan *ChannelEvent, config.ChannelQueueSize),
 		authenticateEventCh: make(chan *AuthenticationEvent, config.AuthenticationQueueSize),
 		messagesCh:          make(chan *message.Event, config.MessageQueueSize),
+		emitter:             emitter,
 	}
 }
 
@@ -109,7 +113,7 @@ func (p *server) Leave(client *Client) {
 }
 
 func (p *server) dispatchMessage(event *message.Event) {
-	if event.User > 0 {
+	if event.User != "" {
 		// send message to user on all client
 		if clients, ok := p.users.Get(event.User); ok {
 			for _, client := range clients {
@@ -165,7 +169,7 @@ func (p *server) processAuthenticateEvent() {
 					User: user.ID,
 				})
 
-				log.Debug().Msgf("Authenticate user %d for client %s", user.ID, e.Client.ID)
+				log.Debug().Msgf("Authenticate user %s for client %s", user.ID, e.Client.ID)
 			}
 		}
 	}
@@ -284,6 +288,12 @@ func (p *server) Listen() {
 
 }
 
+// ListenAndServe push server
+func (p *server) ListenAndServe() error {
+
+	return nil
+}
+
 // ServeHTTP handler
 func (p *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if p.clients.Size() >= p.config.MaxConnections {
@@ -306,7 +316,7 @@ func (p *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		log.Debug().Msgf("Closing client %s", client.ID)
 
 		if err := client.Close(); err != nil {
-			log.ErrorC(ctx, err)
+			log.Error().Err(err).Msg("Client.Close")
 		}
 	}()
 

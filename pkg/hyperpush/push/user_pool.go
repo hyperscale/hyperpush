@@ -9,32 +9,33 @@ import (
 )
 
 // UserPool interface
+//go:generate mockery -case=underscore -inpkg -name=UserPool
 type UserPool interface {
-	Add(id int, client *Client)
-	Has(id int) bool
-	HasClient(id int, clientID string) bool
-	Get(id int) (map[string]*Client, bool)
-	DelClient(id int, clientID string)
-	Del(id int)
+	Add(id string, client *Client)
+	Has(id string) bool
+	HasClient(id string, clientID string) bool
+	Get(id string) (map[string]*Client, bool)
+	DelClient(id string, clientID string)
+	Del(id string)
 	Size() int
 }
 
 // UserPool struct
 type userPool struct {
-	users      map[int]map[string]*Client
+	users      map[string]map[string]*Client
 	clientsMtx *sync.RWMutex
 }
 
 // NewUserPool constructor
 func NewUserPool() UserPool {
 	return &userPool{
-		users:      make(map[int]map[string]*Client),
+		users:      make(map[string]map[string]*Client),
 		clientsMtx: &sync.RWMutex{},
 	}
 }
 
 // Add user to pool
-func (u *userPool) Add(id int, client *Client) {
+func (u *userPool) Add(id string, client *Client) {
 	u.clientsMtx.Lock()
 	defer u.clientsMtx.Unlock()
 
@@ -50,7 +51,7 @@ func (u *userPool) Add(id int, client *Client) {
 }
 
 // Has user authenticated
-func (u *userPool) Has(id int) bool {
+func (u *userPool) Has(id string) bool {
 	u.clientsMtx.RLock()
 	defer u.clientsMtx.RUnlock()
 
@@ -60,7 +61,7 @@ func (u *userPool) Has(id int) bool {
 }
 
 // HasClient authenticated
-func (u *userPool) HasClient(id int, clientID string) bool {
+func (u *userPool) HasClient(id string, clientID string) bool {
 	if clients, ok := u.Get(id); ok {
 		u.clientsMtx.RLock()
 		defer u.clientsMtx.RUnlock()
@@ -74,7 +75,7 @@ func (u *userPool) HasClient(id int, clientID string) bool {
 }
 
 // Get clients by user id
-func (u *userPool) Get(id int) (map[string]*Client, bool) {
+func (u *userPool) Get(id string) (map[string]*Client, bool) {
 	u.clientsMtx.RLock()
 	defer u.clientsMtx.RUnlock()
 
@@ -84,7 +85,7 @@ func (u *userPool) Get(id int) (map[string]*Client, bool) {
 }
 
 // DelClient by id
-func (u *userPool) DelClient(id int, clientID string) {
+func (u *userPool) DelClient(id string, clientID string) {
 	if clients, ok := u.Get(id); ok {
 		u.clientsMtx.Lock()
 		delete(clients, clientID)
@@ -97,7 +98,7 @@ func (u *userPool) DelClient(id int, clientID string) {
 }
 
 // Del user to pool
-func (u *userPool) Del(id int) {
+func (u *userPool) Del(id string) {
 	u.clientsMtx.Lock()
 	defer u.clientsMtx.Unlock()
 
