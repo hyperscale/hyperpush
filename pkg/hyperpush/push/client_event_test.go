@@ -5,14 +5,13 @@
 package push
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func TestClientEvent(t *testing.T) {
-	c := NewClient(context.Background(), nil, nil)
+	c := NewClient(nil, nil)
 	event := NewClientEvent(ClientEventTypeJoin, c)
 
 	assert.Equal(t, ClientEventTypeJoin, event.Type)

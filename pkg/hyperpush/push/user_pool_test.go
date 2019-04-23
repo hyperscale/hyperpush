@@ -5,7 +5,6 @@
 package push
 
 import (
-	"context"
 	"strconv"
 	"sync"
 	"testing"
@@ -18,7 +17,7 @@ func TestUserPool(t *testing.T) {
 
 	assert.Equal(t, 0, up.Size())
 
-	c1 := NewClient(context.Background(), nil, nil)
+	c1 := NewClient(nil, nil)
 	up.Add("1", c1)
 
 	clients, ok := up.Get("1")
@@ -34,7 +33,7 @@ func TestUserPool(t *testing.T) {
 	assert.False(t, ok)
 
 	assert.Equal(t, 1, up.Size())
-	c2 := NewClient(context.Background(), nil, nil)
+	c2 := NewClient(nil, nil)
 
 	up.Add("1", c2)
 	up.Add("1", c2)
@@ -54,11 +53,11 @@ func TestUserPool(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, 1, len(clients))
 
-	up.Add("2", NewClient(context.Background(), nil, nil))
+	up.Add("2", NewClient(nil, nil))
 
 	assert.Equal(t, 2, up.Size())
 
-	c3 := NewClient(context.Background(), nil, nil)
+	c3 := NewClient(nil, nil)
 	up.Add("3", c3)
 
 	assert.Equal(t, 3, up.Size())
@@ -82,7 +81,7 @@ func TestUserPoolConcurrency(t *testing.T) {
 		defer wg.Done()
 
 		for i := 0; i < 100000; i++ {
-			up.Add(strconv.Itoa(i), NewClient(context.Background(), nil, nil))
+			up.Add(strconv.Itoa(i), NewClient(nil, nil))
 		}
 	}()
 	wg.Add(1)
@@ -90,7 +89,7 @@ func TestUserPoolConcurrency(t *testing.T) {
 		defer wg.Done()
 
 		for i := 100000; i < 200000; i++ {
-			up.Add(strconv.Itoa(i), NewClient(context.Background(), nil, nil))
+			up.Add(strconv.Itoa(i), NewClient(nil, nil))
 		}
 	}()
 
@@ -110,7 +109,7 @@ func BenchmarkUserPool(b *testing.B) {
 		for pb.Next() {
 			i++
 
-			up.Add(strconv.Itoa(i), NewClient(context.Background(), nil, nil))
+			up.Add(strconv.Itoa(i), NewClient(nil, nil))
 		}
 	})
 }

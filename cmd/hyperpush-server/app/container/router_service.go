@@ -13,11 +13,10 @@ import (
 	"github.com/euskadi31/go-service"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/hlog"
+
 	//"github.com/hyperscale/hyperpush/cmd/hyperpush-server/app/config"
 	hlogger "github.com/hyperscale/hyperpush/pkg/hyperpush/logger"
-	"github.com/hyperscale/hyperpush/pkg/hyperpush/push"
 )
-
 
 // Services keys
 const (
@@ -29,7 +28,7 @@ func init() {
 		logger := c.Get(LoggerKey).(zerolog.Logger)
 		//cfg := c.Get(ConfigKey).(*config.Configuration)
 
-		pushHandler := c.Get(PushServerKey).(push.Server)
+		//pushHandler := c.Get(PushServerKey).(push.Server)
 
 		router := server.New(&server.Configuration{
 			HTTP: &server.HTTPConfiguration{
@@ -62,7 +61,7 @@ func init() {
 			})
 		})
 
-		router.Handle("/ws", pushHandler).Methods(http.MethodGet)
+		//router.Handle("/ws", pushHandler).Methods(http.MethodGet)
 
 		return router
 	})

@@ -5,11 +5,11 @@
 package authentication
 
 import (
-	"github.com/hyperscale/hyperpush/pkg/hyperpush/message"
+	"github.com/hyperscale/hyperpush/pkg/hyperpush/mqtt/packets"
 )
 
 // Provider interface
 //go:generate mockery -case=underscore -inpkg -name=Provider
 type Provider interface {
-	Authenticate(accessToken string) (*User, message.ErrorInterface)
+	Authenticate(auth *packets.ConnectPacket) (*User, error)
 }

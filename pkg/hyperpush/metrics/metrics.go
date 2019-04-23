@@ -12,13 +12,13 @@ func init() {
 	prometheus.MustRegister(ClientLive)
 	prometheus.MustRegister(ClientConnection)
 	prometheus.MustRegister(ClientAuthenticate)
-	prometheus.MustRegister(ChannelClient)
+	prometheus.MustRegister(TopicClient)
 	prometheus.MustRegister(MessageReceivedTotal)
-	prometheus.MustRegister(ChannelMessageReceivedTotal)
-	prometheus.MustRegister(ChannelMessageReceivedBytes)
-	prometheus.MustRegister(ChannelMessageDeliveredTotal)
-	prometheus.MustRegister(ChannelMessageDeliveredBytes)
-	prometheus.MustRegister(ChannelMessageDeliveredSeconds)
+	prometheus.MustRegister(TopicMessageReceivedTotal)
+	prometheus.MustRegister(TopicMessageReceivedBytes)
+	prometheus.MustRegister(TopicMessageDeliveredTotal)
+	prometheus.MustRegister(TopicMessageDeliveredBytes)
+	prometheus.MustRegister(TopicMessageDeliveredSeconds)
 }
 
 // ClientLive metrics
@@ -57,57 +57,57 @@ var MessageReceivedTotal = prometheus.NewCounterVec(
 	[]string{"type"},
 )
 
-// ChannelClient metrics
-var ChannelClient = prometheus.NewGaugeVec(
+// TopicClient metrics
+var TopicClient = prometheus.NewGaugeVec(
 	prometheus.GaugeOpts{
-		Name: "channel_client_total",
-		Help: "The count of client connected on channel.",
+		Name: "topic_client_total",
+		Help: "The count of client connected on topic.",
 	},
-	[]string{"channel"},
+	[]string{"topic"},
 )
 
-// ChannelMessageReceivedTotal metrics
-var ChannelMessageReceivedTotal = prometheus.NewCounterVec(
+// TopicMessageReceivedTotal metrics
+var TopicMessageReceivedTotal = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
-		Name: "channel_message_received_total",
+		Name: "topic_message_received_total",
 		Help: "The count of message received.",
 	},
-	[]string{"channel"},
+	[]string{"topic"},
 )
 
-// ChannelMessageReceivedBytes metrics
-var ChannelMessageReceivedBytes = prometheus.NewCounterVec(
+// TopicMessageReceivedBytes metrics
+var TopicMessageReceivedBytes = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
-		Name: "channel_message_received_bytes",
+		Name: "topic_message_received_bytes",
 		Help: "The bytes of message received.",
 	},
-	[]string{"channel"},
+	[]string{"topic"},
 )
 
-// ChannelMessageDeliveredTotal metrics
-var ChannelMessageDeliveredTotal = prometheus.NewCounterVec(
+// TopicMessageDeliveredTotal metrics
+var TopicMessageDeliveredTotal = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
-		Name: "channel_message_delivered_total",
+		Name: "topic_message_delivered_total",
 		Help: "The count of message delivered.",
 	},
-	[]string{"channel"},
+	[]string{"topic"},
 )
 
-// ChannelMessageDeliveredBytes metrics
-var ChannelMessageDeliveredBytes = prometheus.NewCounterVec(
+// TopicMessageDeliveredBytes metrics
+var TopicMessageDeliveredBytes = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
-		Name: "channel_message_delivered_bytes",
+		Name: "topic_message_delivered_bytes",
 		Help: "The bytes of message delivered.",
 	},
-	[]string{"channel"},
+	[]string{"topic"},
 )
 
-// ChannelMessageDeliveredSeconds metrics
-var ChannelMessageDeliveredSeconds = prometheus.NewHistogramVec(
+// TopicMessageDeliveredSeconds metrics
+var TopicMessageDeliveredSeconds = prometheus.NewHistogramVec(
 	prometheus.HistogramOpts{
-		Name:    "channel_message_delivered_seconds",
+		Name:    "topic_message_delivered_seconds",
 		Help:    "The latencies of message delivered in seconds.",
 		Buckets: []float64{0.01, 0.1, 0.3, 0.5, 1., 2., 5.},
 	},
-	[]string{"channel"},
+	[]string{"topic"},
 )

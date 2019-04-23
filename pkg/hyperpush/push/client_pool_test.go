@@ -5,7 +5,6 @@
 package push
 
 import (
-	"context"
 	"sync"
 	"testing"
 
@@ -17,11 +16,12 @@ func TestClientPool(t *testing.T) {
 
 	assert.Equal(t, 0, cp.Size())
 
-	cp.Add(NewClient(context.Background(), nil, nil))
+	c0 := NewClient(nil, nil)
+	cp.Add(c0)
 
 	assert.Equal(t, 1, cp.Size())
 
-	c1 := NewClient(context.Background(), nil, nil)
+	c1 := NewClient(nil, nil)
 	cp.Add(c1)
 
 	cp.Add(c1)
@@ -61,14 +61,14 @@ func TestClientPoolConcurrency(t *testing.T) {
 		defer wg.Done()
 
 		for i := 0; i < 10000; i++ {
-			cp.Add(NewClient(context.Background(), nil, nil))
+			cp.Add(NewClient(nil, nil))
 		}
 	}()
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		for i := 10000; i < 20000; i++ {
-			cp.Add(NewClient(context.Background(), nil, nil))
+			cp.Add(NewClient(nil, nil))
 		}
 	}()
 

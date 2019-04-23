@@ -9,9 +9,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/euskadi31/go-server"
 	"github.com/euskadi31/go-service"
 	"github.com/hyperscale/hyperpush/cmd/hyperpush-server/app/container"
+	"github.com/hyperscale/hyperpush/pkg/hyperpush/push"
 	"github.com/rs/zerolog/log"
 )
 
@@ -21,13 +21,20 @@ func Run() error {
 	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
 
 	_ = service.Get(container.LoggerKey)
-	router := service.Get(container.RouterKey).(*server.Server)
+	//router := service.Get(container.RouterKey).(*server.Server)
+	server := service.Get(container.PushServerKey).(push.Server)
 
 	log.Info().Msg("Rinning")
-
+	/*
+		go func() {
+			if err := router.Run(); err != nil {
+				log.Error().Err(err).Msg("router.Run")
+			}
+		}()
+	*/
 	go func() {
-		if err := router.Run(); err != nil {
-			log.Error().Err(err).Msg("server.Run")
+		if err := server.ListenAndServe(); err != nil {
+			log.Error().Err(err).Msg("server.ListenAndServe")
 		}
 	}()
 
@@ -35,5 +42,6 @@ func Run() error {
 
 	log.Info().Msg("Shutdown")
 
-	return router.Shutdown()
+	//return router.Shutdown()
+	return nil
 }

@@ -4,16 +4,20 @@
 
 package push
 
+import (
+	"github.com/hyperscale/hyperpush/pkg/hyperpush/mqtt/packets"
+)
+
 // AuthenticationEvent struct
 type AuthenticationEvent struct {
-	Token  string
+	Packet *packets.ConnectPacket
 	Client *Client
 }
 
 // NewAuthenticationEvent func
-func NewAuthenticationEvent(token string, client *Client) *AuthenticationEvent {
+func NewAuthenticationEvent(packet *packets.ConnectPacket, client *Client) *AuthenticationEvent {
 	return &AuthenticationEvent{
-		Token:  token,
+		Packet: packet,
 		Client: client,
 	}
 }

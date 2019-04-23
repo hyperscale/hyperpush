@@ -5,17 +5,18 @@
 package push
 
 import (
-	"context"
 	"testing"
+
+	"github.com/hyperscale/hyperpush/pkg/hyperpush/mqtt/packets"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func TestChannelEvent(t *testing.T) {
-	c := NewClient(context.Background(), nil, nil)
-	event := NewChannelEvent(ChannelEventTypeSubscribe, "test", c)
+func TestTopicEvent(t *testing.T) {
+	c := NewClient(nil, nil)
+	event := NewTopicEvent(TopicEventTypeSubscribe, "test", c, packets.Details{})
 
-	assert.Equal(t, ChannelEventTypeSubscribe, event.Type)
+	assert.Equal(t, TopicEventTypeSubscribe, event.Type)
 	assert.Equal(t, "test", event.Name)
 	assert.Equal(t, c, event.Client)
 }

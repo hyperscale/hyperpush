@@ -5,103 +5,40 @@
 package push
 
 import (
-	"context"
-	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/google/uuid"
-	ws "github.com/gorilla/websocket"
-	"github.com/hyperscale/hyperpush/pkg/hyperpush/message"
-	"github.com/hyperscale/hyperpush/pkg/hyperpush/websocket"
-	"github.com/rs/zerolog/log"
-)
-
-const (
-	// Maximum message size allowed from peer.
-	maxMessageSize = 10240
+	"github.com/hyperscale/hyperpush/pkg/hyperpush/mqtt/packets"
+	"github.com/hyperscale/hyperpush/pkg/hyperpush/transport"
 )
 
 // Client struct
 type Client struct {
-	ID             string
-	UserID         string
-	ws             websocket.Connection
-	server         Server
-	isConnected    bool
-	messagesCh     chan *message.Event
-	messagesDoneCh chan bool
-	Ctx            context.Context
+	ID          string
+	UserID      string
+	ts          transport.Transport
+	server      Server
+	isConnected bool
 }
 
 // NewClient constructor
-func NewClient(ctx context.Context, ws websocket.Connection, server Server) *Client {
-	id := uuid.New().String()
-
-	// ctx = log.CtxAddField(ctx, "client_id", id)
-
+func NewClient(ts transport.Transport, server Server) *Client {
 	return &Client{
-		Ctx:            ctx,
-		ID:             id,
-		ws:             ws,
-		server:         server,
-		isConnected:    true,
-		messagesCh:     make(chan *message.Event, 250),
-		messagesDoneCh: make(chan bool, 1),
+		ID:          uuid.New().String(),
+		ts:          ts,
+		server:      server,
+		isConnected: true,
 	}
 }
 
 // Write event to client
-func (c *Client) Write(event *message.Event) {
-	if c.isConnected {
-		c.messagesCh <- event
-	}
+func (c *Client) Write(event packets.ControlPacket) error {
+	return c.ts.Write(event)
 }
 
 // IsAuthenticated client
 func (c *Client) IsAuthenticated() bool {
 	return c.UserID != ""
-}
-
-func (c *Client) processMessages() {
-	defer func() {
-		c.isConnected = false
-	}()
-
-	for {
-		select {
-		case e, ok := <-c.messagesCh:
-			if err := c.ws.SetWriteDeadline(time.Now().Add(5 * time.Second)); err != nil {
-				log.Error().Err(err).Msg("")
-
-				continue
-			}
-
-			if !ok {
-				// The hub closed the channel.
-				if err := c.ws.WriteMessage(ws.CloseMessage, []byte{}); err != nil {
-					log.Error().Err(err).Msg("")
-				}
-
-				return
-			}
-
-			msg, err := message.Encode(e)
-			if err != nil {
-				log.Error().Err(err).Msg("message.Encode")
-
-				continue
-			}
-
-			if err := c.ws.WriteMessage(ws.TextMessage, msg); err != nil {
-				log.Error().Err(err).Msg("")
-
-				return
-			}
-		case <-c.messagesDoneCh:
-			return
-		}
-	}
 }
 
 // Close client
@@ -110,87 +47,64 @@ func (c *Client) Close() error {
 
 	c.server.Leave(c)
 
-	c.messagesDoneCh <- true
+	if err := c.Write(packets.NewControlPacket(packets.Disconnect)); err != nil {
+		return err
+	}
 
-	return c.ws.Close()
+	return c.ts.Close()
 }
 
-func (c *Client) process(event *message.Event) {
-	switch event.Type {
-	case message.EventTypeMessage:
-		if c.UserID == "" {
-			c.Write(message.NewEventFromErrorCode(message.ErrorCodeUnauthorized))
+func (c *Client) process(event packets.ControlPacket) error {
+	switch evt := event.(type) {
+	case *packets.PublishPacket:
+		/*
+			if c.UserID == "" {
+				c.Write(message.NewEventFromErrorCode(message.ErrorCodeUnauthorized))
 
-			break
-		}
-		c.server.Publish(event)
+				break
+			}
+		*/
+		c.server.Publish(evt)
 
-	case message.EventTypeSubscribe:
-		c.server.JoinChannel(event.Channel, c)
+	case *packets.SubscribePacket:
+		c.server.JoinTopic(evt, c)
 
-	case message.EventTypeUnsubscribe:
-		c.server.LeaveChannel(event.Channel, c)
+	case *packets.UnsubscribePacket:
+		c.server.LeaveTopic(evt, c)
 
-	case message.EventTypePing:
-		c.Write(&message.Event{
-			Type: message.EventTypePong,
-		})
+	case *packets.PingreqPacket:
+		resp := packets.NewControlPacket(packets.Pingresp)
 
-	case message.EventTypeAuthentication:
-		c.server.Authenticate(event.Token, c)
+		c.Write(resp)
+
+	case *packets.ConnectPacket:
+		c.ID = evt.ClientIdentifier
+		c.server.Authenticate(evt, c)
 
 	default:
-		msg := fmt.Sprintf(`Unsupported "%s" event type`, event.Type)
-
-		log.Error().Msg(msg)
-
-		data, err := json.Marshal(msg)
-		if err != nil {
-			log.Error().Err(err).Msg("json.Marshal")
-		}
-
-		c.Write(&message.Event{
-			Type: message.EventTypeError,
-			Data: json.RawMessage(data),
-		})
+		return fmt.Errorf(`Unsupported "%v" event type`, evt)
 	}
+
+	return nil
 }
 
-// Listen func
-func (c *Client) Listen() {
-	go c.processMessages()
-
-	c.ws.SetReadLimit(maxMessageSize)
-
-	for {
-		if !c.isConnected {
-			return
-		}
-
-		_, msg, err := c.ws.ReadMessage()
-		if err != nil {
-			if ws.IsUnexpectedCloseError(
-				err,
-				ws.CloseAbnormalClosure,
-				ws.CloseNoStatusReceived,
-				ws.CloseNormalClosure,
-				ws.CloseGoingAway,
-			) {
-				log.Error().Err(err).Msg("ws.ReadMessage")
-			}
-			return
-		}
-
-		event, err := message.Decode(msg)
-		if err != nil {
+// ReadEvent events
+func (c *Client) ReadEvent() error {
+	event, err := c.ts.Read()
+	if err != nil {
+		//@TODO: check error type, if bad request return error event
+		/*
 			log.Error().Err(err).Msg("Bad request")
 
 			c.Write(&message.Event{
 				Type: message.EventTypeError,
 				Data: json.RawMessage("Bad request"),
 			})
-		} else {
-			c.process(event)
-		}
+		*/
+		c.ts.Close()
+
+		return err
 	}
+
+	return c.process(event)
 }

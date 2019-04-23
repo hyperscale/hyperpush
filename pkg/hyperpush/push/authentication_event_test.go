@@ -5,16 +5,19 @@
 package push
 
 import (
-	"context"
 	"testing"
+
+	"github.com/hyperscale/hyperpush/pkg/hyperpush/mqtt/packets"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func TestAutenticationEvent(t *testing.T) {
-	c := NewClient(context.Background(), nil, nil)
-	event := NewAuthenticationEvent("test", c)
+	packet := packets.NewConnectPacket()
 
-	assert.Equal(t, "test", event.Token)
+	c := NewClient(nil, nil)
+	event := NewAuthenticationEvent(packet, c)
+
+	assert.Equal(t, packet, event.Packet)
 	assert.Equal(t, c, event.Client)
 }

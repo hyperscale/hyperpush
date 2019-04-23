@@ -12,20 +12,20 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestChannelPool(t *testing.T) {
-	cm := NewChannelPool()
+func TestTopicPool(t *testing.T) {
+	cm := NewTopicPool()
 
 	assert.Equal(t, 0, cm.Size())
 
-	cm.Add(NewChannel("test"))
+	cm.Add(NewTopic("test"))
 
 	assert.Equal(t, 1, cm.Size())
 
-	cm.Add(NewChannel("test 2"))
+	cm.Add(NewTopic("test 2"))
 
 	assert.Equal(t, 2, cm.Size())
 
-	c1 := NewChannel("test")
+	c1 := NewTopic("test")
 	cm.Add(c1)
 	cm.Add(c1)
 
@@ -45,29 +45,29 @@ func TestChannelPool(t *testing.T) {
 
 	assert.False(t, ok)
 
-	channels := cm.Channels()
+	channels := cm.Topics()
 
 	assert.Equal(t, cm.Size(), len(channels))
 }
 
-func TestChannelPoolConcurrency(t *testing.T) {
+func TestTopicPoolConcurrency(t *testing.T) {
 	var wg sync.WaitGroup
 
-	cm := NewChannelPool()
+	cm := NewTopicPool()
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 
 		for i := 0; i < 10000; i++ {
-			cm.Add(NewChannel(fmt.Sprintf("test-%d", i)))
+			cm.Add(NewTopic(fmt.Sprintf("test-%d", i)))
 		}
 	}()
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		for i := 10000; i < 20000; i++ {
-			cm.Add(NewChannel(fmt.Sprintf("test-%d", i)))
+			cm.Add(NewTopic(fmt.Sprintf("test-%d", i)))
 		}
 	}()
 

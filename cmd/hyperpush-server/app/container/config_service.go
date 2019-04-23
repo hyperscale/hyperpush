@@ -51,6 +51,16 @@ func init() {
 		options.SetDefault("server.read_timeout", 10*time.Second)
 		options.SetDefault("server.shutdown_timeout", 10*time.Second)
 		options.SetDefault("server.write_timeout", 10*time.Second)
+		options.SetDefault("push.host", "")
+		options.SetDefault("push.port", 7689)
+		options.SetDefault("push.client_queue_size", 200)
+		options.SetDefault("push.channel_queue_size", 200)
+		options.SetDefault("push.authentication_queue_size", 200)
+		options.SetDefault("push.message_queue_size", 200)
+		options.SetDefault("push.max_connections", 50000)
+		options.SetDefault("push.connection_worker_size", 128)
+		options.SetDefault("push.connection_queue_size", 500)
+		options.SetDefault("push.io_timeout_duration", 4*time.Second)
 
 		options.SetConfigName("config") // name of config file (without extension)
 

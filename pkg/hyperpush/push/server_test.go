@@ -4,14 +4,6 @@
 
 package push
 
-import (
-	"net/http"
-	"net/http/httptest"
-	"testing"
-
-	"github.com/stretchr/testify/assert"
-)
-
 /*
 func TestServerAuthenticationProvider(t *testing.T) {
 	authenticationMock := NewAuthenticationMock()
@@ -24,24 +16,6 @@ func TestServerAuthenticationProvider(t *testing.T) {
 }
 */
 
-func TestServerNotFoundUrl(t *testing.T) {
-	server := NewServer(&Configuration{
-		ClientQueueSize:         500,
-		ChannelQueueSize:        500,
-		AuthenticationQueueSize: 500,
-		MessageQueueSize:        500,
-		MaxConnections:          30000,
-	}, nil)
-
-	go server.Listen()
-
-	ts := httptest.NewServer(server)
-	defer ts.Close()
-
-	_, err := http.Get(ts.URL)
-	assert.NoError(t, err)
-}
-
 /*
 func TestServer(t *testing.T) {
 	token, err := makeAccessToken(testKey)
@@ -53,7 +27,7 @@ func TestServer(t *testing.T) {
 
 	server := NewServer(Configuration{
 		ClientQueueSize:         500,
-		ChannelQueueSize:        500,
+		TopicQueueSize:        500,
 		AuthenticationQueueSize: 500,
 		MessageQueueSize:        500,
 		MaxConnections:          1,
@@ -91,7 +65,7 @@ func TestServer(t *testing.T) {
 				wg.Done()
 			case 1:
 				assert.Equal(t, message.EventTypeSubscribed, event.Type)
-				assert.Equal(t, "test", event.Channel)
+				assert.Equal(t, "test", event.Topic)
 				state++
 				wg.Done()
 			case 2:
@@ -114,14 +88,14 @@ func TestServer(t *testing.T) {
 				wg.Done()
 			case 6:
 				assert.Equal(t, message.EventTypeMessage, event.Type)
-				assert.Equal(t, "test", event.Channel)
+				assert.Equal(t, "test", event.Topic)
 				assert.Equal(t, "foo", event.Name)
 				assert.Equal(t, json.RawMessage(`"bar"`), event.Data)
 				state++
 				wg.Done()
 			case 7:
 				assert.Equal(t, message.EventTypeUnsubscribed, event.Type)
-				assert.Equal(t, "test", event.Channel)
+				assert.Equal(t, "test", event.Topic)
 				state++
 				wg.Done()
 			case 8:
@@ -199,7 +173,7 @@ func BenchmarkTest(b *testing.B) {
 
 	server := NewServer(&Configuration{
 		ClientQueueSize:         500,
-		ChannelQueueSize:        500,
+		TopicQueueSize:        500,
 		AuthenticationQueueSize: 500,
 		MessageQueueSize:        500,
 		MaxConnections:          10000,

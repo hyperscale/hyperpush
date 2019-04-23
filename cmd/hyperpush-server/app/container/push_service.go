@@ -9,6 +9,7 @@ import (
 	"github.com/euskadi31/go-service"
 	"github.com/hyperscale/hyperpush/cmd/hyperpush-server/app/config"
 	"github.com/hyperscale/hyperpush/pkg/hyperpush/push"
+	"github.com/rs/zerolog/log"
 )
 
 // Services keys
@@ -21,6 +22,11 @@ func init() {
 		cfg := c.Get(ConfigKey).(*config.Configuration)
 		emitter := c.Get(EventEmitterKey).(eventemitter.EventEmitter)
 
-		return push.NewServer(cfg.Push, emitter)
+		serv, err := push.NewServer(cfg.Push, emitter)
+		if err != nil {
+			log.Fatal().Err(err).Msg(PushServerKey)
+		}
+
+		return serv // push.Server
 	})
 }
